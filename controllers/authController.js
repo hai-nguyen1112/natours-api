@@ -12,7 +12,7 @@ const signToken = (id) => {
   });
 };
 
-const createSendToken = (user, statusCode, res) => {
+const createSendToken = (user, statusCode, req, res) => {
   const token = signToken(user._id);
 
   const cookieOptions = {
@@ -22,7 +22,9 @@ const createSendToken = (user, statusCode, res) => {
     //secure: true, // this makes the cookie sent with encryption https
     httpOnly: true, // this makes the cookie not be modified by the browser
   };
-  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+  if (req.secure || req.headers('x-forwarded-proto') === 'https')
+    cookieOptions.secure = true; // this is very heroku
+  //if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
   res.cookie('jwt', token, cookieOptions);
 
   // remove the password from response
@@ -44,7 +46,7 @@ exports.signup = catchAsync(async (req, res, next) => {
   //   passwordConfirm: req.body.passwordConfirm,
   // });
 
-  createSendToken(newUser, 201, res);
+  createSendToken(newUser, 201, req, res);
 });
 
 exports.login = catchAsync(async (req, res, next) => {
@@ -63,7 +65,7 @@ exports.login = catchAsync(async (req, res, next) => {
   }
 
   // 3) If everything ok, send token to client
-  createSendToken(user, 200, res);
+  createSendToken(user, 200, req, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -201,7 +203,7 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   await user.save(); // User.findByIdAndUpdate will not work.
 
   // 4) Log user in, send JWT
-  createSendToken(user, 200, res);
+  createSendToken(user, 200, req, res);
 });
 
 // Only for rendered pages, no errors!
