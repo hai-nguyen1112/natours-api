@@ -8,6 +8,8 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
+const cors = require('cors');
+
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
@@ -25,6 +27,16 @@ app.set('views', path.join(__dirname, 'views'));
 /**
  * 1) Define global middlewares
  */
+// Implement CORS
+app.use(cors()); // set Access-Control-Allow-Origin to everything
+// backend: api.natours.com, frontend: natours.com
+// app.use(cors({
+//  origin: 'https://www.natours.com'
+// })) //this is to allow Access-Control-Allow-Origin to only the frontend natours.com
+
+app.options('*', cors()); // this is to allow pre-flight for all routes
+// app.options('/api/v1/tours/:id', cors()); // this is to allow pre-flight for only a specific route
+
 // This is a middleware we must use to server static files
 // app.use(express.static(`${__dirname}/public`));
 app.use(express.static(path.join(__dirname, 'public')));
