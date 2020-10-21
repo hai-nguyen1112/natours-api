@@ -15,6 +15,7 @@ const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
+const bookingRouter = require('./routes/bookingRoutes');
 const viewRouter = require('./routes/viewRoutes');
 
 const app = express();
@@ -62,7 +63,7 @@ app.use('/api', limiter);
 
 // This is a middleware we must use to add the data from the body of the API request to the req argument of the route handler callback function.
 app.use(express.json({ limit: '10kb' })); // if the body of the request is larger than 10kb, Express will not accept it.
-
+app.use(express.urlencoded({ extended: true, limit: '10kb' })); // This is to parse the data coming from an encoded url
 app.use(cookieParser());
 
 // This is a middleware that does data sanitization against NoSQL query injection.
@@ -103,6 +104,7 @@ app.use('/', viewRouter);
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/reviews', reviewRouter);
+app.use('/api/v1/bookings', bookingRouter);
 
 // This is to send back an error message for undefined routes. We must put this after defined routes.
 app.all('*', (req, res, next) => {

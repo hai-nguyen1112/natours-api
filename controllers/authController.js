@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const User = require('../models/userModel');
-const sendEmail = require('../utils/email');
+const Email = require('../utils/email');
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -22,9 +22,12 @@ const createSendToken = (user, statusCode, req, res) => {
     //secure: true, // this makes the cookie sent with encryption https
     httpOnly: true, // this makes the cookie not be modified by the browser
   };
-  if (req.secure || req.headers('x-forwarded-proto') === 'https')
-    cookieOptions.secure = true; // this is very heroku
-  //if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+  // if (req.secure || req.headers('x-forwarded-proto') === 'https')
+  //   cookieOptions.secure = true; // this is very heroku
+  if (process.env.NODE_ENV === 'production') {
+    cookieOptions.secure = true;
+  }
+
   res.cookie('jwt', token, cookieOptions);
 
   // remove the password from response
@@ -45,6 +48,9 @@ exports.signup = catchAsync(async (req, res, next) => {
   //   password: req.body.password,
   //   passwordConfirm: req.body.passwordConfirm,
   // });
+  const url = `${req.protocol}://${req.get('host')}/me`;
+  console.log(url);
+  await new Email(newUser, url).sendWelcome();
 
   createSendToken(newUser, 201, req, res);
 });
@@ -77,7 +83,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   ) {
     token = req.headers.authorization.split(' ')[1];
   } else if (req.cookies.jwt) {
-    token = req.cookes.jwt;
+    token = req.cookies.jwt;
   }
 
   if (!token) {
@@ -102,6 +108,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   // 5) Grant access to protected route
   req.user = currentUser;
+  res.locals.user = currentUser;
   next();
 });
 
@@ -129,18 +136,13 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   await user.save({ validateBeforeSave: false }); // This is to skip the validation before SAVE
 
   // 3) Send it to user's email
-  const resetURL = `${req.protocol}://${req.get(
-    'host'
-  )}/api/v1/users/resetPassword/${resetToken}`;
-
-  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
-
   try {
-    // await sendEmail({
-    //   email: user.email,
-    //   subject: 'Your password reset token (valid for 10min)',
-    //   message,
-    // });
+    const resetURL = `${req.protocol}://${req.get(
+      'host'
+    )}/api/v1/users/resetPassword/${resetToken}`;
+
+    await new Email(user, resetURL).sendPasswordReset();
+
     res.status(200).json({
       status: 'success',
       message: 'Token sent to email!',
@@ -186,7 +188,7 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   // This step is done by the middleware in userModel
 
   // 4) Log the user in, send JWT
-  createSendToken(user, 201, res);
+  createSendToken(user, 201, req, res);
 });
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
@@ -212,7 +214,7 @@ exports.isLoggedIn = async (req, res, next) => {
     try {
       // 1) verify token
       const decoded = await promisify(jwt.verify)(
-        req.cookes.jwt,
+        req.cookies.jwt,
         process.env.JWT_SECRET
       );
 
@@ -235,7 +237,7 @@ exports.isLoggedIn = async (req, res, next) => {
         );
       }
 
-      // 4) There is a logged in user
+      // 3) There is a logged in user
       res.locals.user = currentUser; // inside every pug template there will a variable user
       return next();
     } catch (err) {
@@ -247,8 +249,8 @@ exports.isLoggedIn = async (req, res, next) => {
 
 exports.logout = (req, res) => {
   res.cookie('jwt', 'loggedout', {
-    expires: new Date(Date.now() + 10 * 1000),
+    expires: new Date(Date.now() + 1 * 1000),
     httpOnly: true,
   });
-  res.status(200).json({ status: 'success ' });
+  res.status(200).json({ status: 'success' });
 };

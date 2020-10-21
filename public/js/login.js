@@ -3,7 +3,6 @@ import axios from 'axios';
 import {showAlert} from './alert';
 
 export const login = async (email, password) => {
-  console.log(email, password);
   try {
     const res = await axios({
       method: 'POST',
@@ -12,6 +11,7 @@ export const login = async (email, password) => {
     })
 
     if (res.data.status === 'success') {
+      console.log(res);
       showAlert('success', 'Logged in successfully!')
       window.setTimeout(() => {
         location.assign('/');
@@ -19,6 +19,7 @@ export const login = async (email, password) => {
     }
 
   } catch(err) {
+    console.log(err)
     showAlert('error', 'Something went wrong!')
   } 
 }
@@ -29,7 +30,7 @@ export const logout = async () => {
       method: 'GET',
       url: 'http://127.0.0.1:3000/api/v1/users/logout',
     })
-
+    console.log('I am here');
     if (res.data.status === 'success') {
       location.reload('true');
     }
